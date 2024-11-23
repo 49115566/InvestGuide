@@ -9,11 +9,11 @@ from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import Dense, LSTM, Dropout, Bidirectional, BatchNormalization, Attention, Input
 from tensorflow.keras.callbacks import EarlyStopping
 import optuna
-from featureengineering import FeatureEngineering
+from marketdata import MarketData
 
-class Predictor:
+class MarketPredictor:
     def __init__(self, ticker, start_date, end_date, n_outputs, n_epochs, n_trials, save_path = None):
-        self.data_control = FeatureEngineering(ticker, start_date, end_date)
+        self.data_control = MarketData(ticker, start_date, end_date)
         self.n_outputs = n_outputs
         self.n_epochs = n_epochs
         self.n_trials = n_trials

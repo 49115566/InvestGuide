@@ -1,9 +1,9 @@
 import unittest
-from featureengineering import FeatureEngineering
+from marketdata import MarketData
 
-class TestFeatureEngineering(unittest.TestCase):
+class TestMarketData(unittest.TestCase):
     def setUp(self):
-        self.fe = FeatureEngineering(ticker='AAPL', start_date='2022-01-01', end_date='2022-12-31')
+        self.fe = MarketData(ticker='AAPL', start_date='2022-01-01', end_date='2022-12-31')
 
     def test_add_log_return(self):
         self.fe.add_log_return()

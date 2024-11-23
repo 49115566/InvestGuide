@@ -7,7 +7,7 @@ from collections import defaultdict
 from sklearn.impute import SimpleImputer
 from finnhub import Client
 
-class FeatureEngineering:
+class MarketData:
     """
     A class used to perform feature engineering on financial data.
     Attributes
@@ -26,9 +26,9 @@ class FeatureEngineering:
         A dictionary mapping feature names to their corresponding methods.
     Methods
     -------
-    load_data():
+    fetch_data():
         Loads the financial data for the given ticker and date range.
-    load_data_with_features(features):
+    fetch_data_with_features(features):
         Loads the financial data and adds the specified features.
     add_custom_feature(feature, FeatureCol):
         Adds a custom feature to the data.
@@ -95,7 +95,7 @@ class FeatureEngineering:
     fix_missing_values(strategy='bfill'):
         Fixes missing values in the data using the specified strategy.
     """
-    def __init__(self, ticker, start_date, end_date, data=None):
+    def __init__(self, ticker, start_date, end_date, fetch_data=True, data=None):
         """
         Initializes the FeatureEngineering class with the given parameters.
         
@@ -113,10 +113,11 @@ class FeatureEngineering:
         self.ticker = ticker
         self.start_date = start_date
         self.end_date = end_date
-        if data is not None:
-            self.data = data
+        if fetch_data:
+            self.fetch_data()
         else:
-            self.load_data()
+            self.data = data
+
         
         self.finnhub_client = None
         self.feature_functions = defaultdict(lambda: None, {
@@ -156,9 +157,9 @@ class FeatureEngineering:
             'MSPR': self.add_sentiment
         })
 
-    def load_data(self):
+    def fetch_data(self):
         """
-        Loads the financial data for the given ticker and date range.
+        Fetches the financial data for the given ticker and date range.
         """
         self.data = yf.download(self.ticker, start=self.start_date, end=self.end_date)
         if self.data.empty:
@@ -166,17 +167,29 @@ class FeatureEngineering:
         if isinstance(self.data.columns, pd.MultiIndex):
             self.data.columns = self.data.columns.droplevel(1)
 
-    def load_data_with_features(self, features):
+    def fetch_data_with_features(self, features):
         """
-        Loads the financial data and adds the specified features.
+        Fetches the financial data and adds the specified features.
         
         Parameters
         ----------
         features : list
             A list of feature names to add to the data.
         """
-        self.load_data()
+        self.fetch_data()
         self.add_features(features)
+
+    def fetch_data_with_all_features(self, exclude=[]):
+        """
+        Fetches the financial data and adds all features but those specified
+
+        Parameters
+        ----------
+        exclude : list (optional)
+            A list of feature names to exclude from the data
+        """
+        self.fetch_data()
+        self.add_all_features(exclude=exclude)
 
     def add_custom_feature(self, feature, FeatureCol):
         """
@@ -837,7 +850,7 @@ class FeatureEngineering:
         """
         self.plot(features=['Volume', 'OBV', 'ADL'], save_file=save_file, start_date=start_date, end_date=end_date)
 
-    def save_data(self, file_name='data.csv'):
+    def to_csv(self, file_name='data.csv'):
         """
         Saves the data to a CSV file.
         
@@ -846,9 +859,9 @@ class FeatureEngineering:
         file_name : str, optional
             The name of the CSV file to save (default is 'data.csv').
         """
-        self.data.to_csv(file_name)
+        self.data.to_csv(file_name, index=True)
 
-    def save_as_feather(self, file_name='data.feather'):
+    def to_feather(self, file_name='data.feather'):
         """
         Saves the data to a Feather file.
         
@@ -859,7 +872,7 @@ class FeatureEngineering:
         """
         self.data.reset_index().to_feather(file_name)
 
-    def load_data_from_file(self, file_name='data.csv'):
+    def read_csv(self, file_name='data.csv'):
         """
         Loads the data from a CSV file.
         
@@ -868,9 +881,9 @@ class FeatureEngineering:
         file_name : str, optional
             The name of the CSV file to load (default is 'data.csv').
         """
-        self.data = pd.read_csv(file_name, index_col=0)
+        self.data = pd.read_csv(file_name, index_col=0, parse_dates=True)
 
-    def load_data_from_feather(self, file_name='data.feather'):
+    def read_feather(self, file_name='data.feather'):
         """
         Loads the data from a Feather file.
         
