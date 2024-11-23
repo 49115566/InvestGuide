@@ -57,14 +57,15 @@ pip install yfinance numpy pandas matplotlib scikit-learn finnhub-python
 ```python
 from marketdata import MarketData
 
-# Initialize MarketData with a ticker symbol and date range
+# Initialize MarketData with a ticker symbol and date range.
+# By default, this will grab some data, but you can tell it not to or give it data directly.
 md = MarketData(ticker='AAPL', start_date='2020-01-01', end_date='2021-01-01')
 ```
 
 ### Fetch Data
 
 ```python
-# Fetch financial data
+# Fetch financial data. The data fetched will be Adj Close, Close, High, Low, Open, and Volume.
 md.fetch_data()
 ```
 
@@ -72,16 +73,23 @@ md.fetch_data()
 
 ```python
 # Add specific features
-md.add_features(['LogReturn', 'SMA20', 'RSI'])
+md.add_features(features=['LogReturn', 'SMA20', 'RSI'])
 
-# Add all features except specified ones
+# Add all possible features except specified ones
 md.add_all_features(exclude=['Volume'])
+
+# Add a column via function
+md.add_custom_feature(feature=lambda data: np.log(data['Close'] / data['Close'].shift(2)), feature_column='LogReturnDoubleShift')
+
+# Add a specific feature
+md.add_log_return()
 ```
 
 ### Handle Missing Values
 
 ```python
 # Fix missing values using backfill strategy
+# Can use any strategy from the SimpleImputer class, as well as bfill and ffill
 md.fix_missing_values(strategy='bfill')
 ```
 
