@@ -30,6 +30,8 @@ class MarketData:
         Loads the financial data for the given ticker and date range.
     fetch_data_with_features(features):
         Loads the financial data and adds the specified features.
+    fetch_data_with_all_features(exclude=[]):
+        Loads the financial data and adds all features but those specified.
     add_custom_feature(feature, FeatureCol):
         Adds a custom feature to the data.
     add_log_return(LogReturnCol='LogReturn', CloseCol='Close'):
@@ -94,10 +96,26 @@ class MarketData:
         Adds all available features to the data, excluding specified ones.
     fix_missing_values(strategy='bfill'):
         Fixes missing values in the data using the specified strategy.
+    plot(features=[], save_file="plot.png", start_date=None, end_date=None):
+        Plots the specified features.
+    plot_all_features(exclude=[], save_file="plot.png", start_date=None, end_date=None):
+        Plots all available features, excluding specified ones.
+    plot_non_volume_features(save_file='plot.png', start_date=None, end_date=None):
+        Plots all non-volume features.
+    plot_volume_features(save_file='plot.png', start_date=None, end_date=None):
+        Plots all volume features, excluding specified ones.
+    to_csv(file_name='data.csv'):
+        Saves the data to a CSV file.
+    to_feather(file_name='data.feather'):
+        Saves the data to a Feather file.
+    read_csv(file_name='data.csv'):
+        Loads the data from a CSV file.
+    read_feather(file_name='data.feather'):
+        Loads the data from a Feather file.
     """
     def __init__(self, ticker, start_date, end_date, fetch_data=True, data=None):
         """
-        Initializes the FeatureEngineering class with the given parameters.
+        Initializes the MarketData class with the given parameters.
         
         Parameters
         ----------
@@ -107,6 +125,8 @@ class MarketData:
             The start date for the data in 'YYYY-MM-DD' format.
         end_date : str
             The end date for the data in 'YYYY-MM-DD' format.
+        fetch_data : bool, optional
+            Whether to fetch data immediately upon initialization (default is True).
         data : pandas.DataFrame, optional
             The financial data (default is None).
         """
@@ -118,7 +138,6 @@ class MarketData:
         else:
             self.data = data
 
-        
         self.finnhub_client = None
         self.feature_functions = defaultdict(lambda: None, {
             'LogReturn': self.add_log_return,
@@ -160,6 +179,11 @@ class MarketData:
     def fetch_data(self):
         """
         Fetches the financial data for the given ticker and date range.
+        
+        Raises
+        ------
+        ValueError
+            If no data is found for the given ticker and date range.
         """
         self.data = yf.download(self.ticker, start=self.start_date, end=self.end_date)
         if self.data.empty:
@@ -181,12 +205,12 @@ class MarketData:
 
     def fetch_data_with_all_features(self, exclude=[]):
         """
-        Fetches the financial data and adds all features but those specified
-
+        Fetches the financial data and adds all features but those specified.
+        
         Parameters
         ----------
-        exclude : list (optional)
-            A list of feature names to exclude from the data
+        exclude : list, optional
+            A list of feature names to exclude from the data (default is an empty list).
         """
         self.fetch_data()
         self.add_all_features(exclude=exclude)
@@ -439,6 +463,10 @@ class MarketData:
             The name of the column containing the volume (default is 'Volume').
         window : int, optional
             The window size for the CMF calculation (default is 20).
+        
+        Notes
+        -----
+        The CMF is calculated by summing the Money Flow Volume (MFV) over a specified window and dividing it by the sum of the volume over the same window.
         """
         mfm = ((self.data[CloseCol] - self.data[LowCol]) - (self.data[HighCol] - self.data[CloseCol])) / (self.data[HighCol] - self.data[LowCol])
         mfm = mfm.fillna(0)  # Handle division by zero
@@ -459,6 +487,10 @@ class MarketData:
             The name of the column containing the low prices (default is 'Low').
         CloseCol : str, optional
             The name of the column containing the closing prices (default is 'Close').
+        
+        Notes
+        -----
+        The Stochastic Oscillator is calculated as the percentage of the current closing price relative to the range of prices over a specified period (default is 14).
         """
         low14 = self.data[LowCol].rolling(window=14).min()
         high14 = self.data[HighCol].rolling(window=14).max()
@@ -478,6 +510,10 @@ class MarketData:
             The name of the column containing the low prices (default is 'Low').
         CloseCol : str, optional
             The name of the column containing the closing prices (default is 'Close').
+        
+        Notes
+        -----
+        The Williams %R is calculated as the percentage of the difference between the highest high and the current closing price relative to the range of prices over a specified period (default is 14).
         """
         high14 = self.data[HighCol].rolling(window=14).max()
         low14 = self.data[LowCol].rolling(window=14).min()
@@ -497,6 +533,10 @@ class MarketData:
             The name of the column containing the low prices (default is 'Low').
         CloseCol : str, optional
             The name of the column containing the closing prices (default is 'Close').
+        
+        Notes
+        -----
+        The CCI is calculated as the difference between the typical price and its moving average, divided by the mean absolute deviation of the typical price over a specified period (default is 20).
         """
         tp = (self.data[HighCol] + self.data[LowCol] + self.data[CloseCol]) / 3
         sma_tp = tp.rolling(window=20).mean()
@@ -517,6 +557,10 @@ class MarketData:
             The name of the column to store the EMA crossover (default is 'EMACrossover').
         CloseCol : str, optional
             The name of the column containing the closing prices (default is 'Close').
+        
+        Notes
+        -----
+        The EMA crossover is calculated as the difference between the short-term EMA and the long-term EMA.
         """
         short_ema = self.data[CloseCol].ewm(span=short_window, adjust=False).mean()
         long_ema = self.data[CloseCol].ewm(span=long_window, adjust=False).mean()
@@ -536,6 +580,10 @@ class MarketData:
             The name of the column containing the ATR (default is 'ATR').
         CloseCol : str, optional
             The name of the column containing the closing prices (default is 'Close').
+        
+        Notes
+        -----
+        The ATR bands are calculated as the closing price plus/minus twice the ATR.
         """
         self.add_atr(ATRCol=ATRCol)
         self.data[ATRUpperCol] = self.data[CloseCol] + (self.data[ATRCol] * 2)
@@ -555,6 +603,10 @@ class MarketData:
             The name of the column containing the low prices (default is 'Low').
         CloseCol : str, optional
             The name of the column containing the closing prices (default is 'Close').
+        
+        Notes
+        -----
+        The Parabolic SAR is calculated using the high and low prices, with an acceleration factor that increases when the trend continues in the same direction.
         """
         af = 0.02
         max_af = 0.2
@@ -604,6 +656,10 @@ class MarketData:
             The name of the column to store the Senkou Span B (default is 'SenkouSpanB').
         CloseCol : str, optional
             The name of the column containing the closing prices (default is 'Close').
+        
+        Notes
+        -----
+        The Ichimoku Cloud is calculated using the high and low prices over different periods to create various lines (Tenkan-sen, Kijun-sen, Senkou Span A, and Senkou Span B).
         """
         high9 = self.data[CloseCol].rolling(window=9).max()
         low9 = self.data[CloseCol].rolling(window=9).min()
@@ -632,6 +688,10 @@ class MarketData:
             The name of the column containing the closing prices (default is 'Close').
         VolumeCol : str, optional
             The name of the column containing the volume (default is 'Volume').
+        
+        Notes
+        -----
+        The MFI is calculated using the typical price and volume to determine the money flow, which is then used to calculate the MFI over a specified period (default is 14).
         """
         tp = (self.data[HighCol] + self.data[LowCol] + self.data[CloseCol]) / 3
         mf = tp * self.data[VolumeCol]
@@ -649,6 +709,10 @@ class MarketData:
             The name of the column to store the ROC (default is 'ROC').
         CloseCol : str, optional
             The name of the column containing the closing prices (default is 'Close').
+        
+        Notes
+        -----
+        The ROC is calculated as the percentage change in the closing price over a specified period (default is 12).
         """
         self.data[ROCCol] = self.data[CloseCol].pct_change(periods=12) * 100
 
@@ -666,6 +730,10 @@ class MarketData:
             The name of the column containing the low prices (default is 'Low').
         CloseCol : str, optional
             The name of the column containing the closing prices (default is 'Close').
+        
+        Notes
+        -----
+        The Pivot Points are calculated as the average of the high, low, and closing prices.
         """
         self.data[PivotCol] = (self.data[HighCol] + self.data[LowCol] + self.data[CloseCol]) / 3
 
@@ -683,6 +751,10 @@ class MarketData:
             The name of the column containing the EMA (default is 'EMA20').
         ATRCol : str, optional
             The name of the column containing the ATR (default is 'ATR').
+        
+        Notes
+        -----
+        The Keltner Channels are calculated using the EMA and ATR. The upper channel is the EMA plus twice the ATR, and the lower channel is the EMA minus twice the ATR.
         """
         self.add_ema(20, EMACol=EMACol)
         self.add_atr(ATRCol=ATRCol)
@@ -703,6 +775,10 @@ class MarketData:
             The name of the column containing the high prices (default is 'High').
         LowCol : str, optional
             The name of the column containing the low prices (default is 'Low').
+        
+        Notes
+        -----
+        The Donchian Channels are calculated as the highest high and the lowest low over a specified period (default is 20).
         """
         self.data[DonchianUpperCol] = self.data[HighCol].rolling(window=20).max()
         self.data[DonchianLowerCol] = self.data[LowCol].rolling(window=20).min()
@@ -719,6 +795,10 @@ class MarketData:
             The prefix for the lagged return columns (default is 'Lag_').
         CloseCol : str, optional
             The name of the column containing the closing prices (default is 'Close').
+        
+        Notes
+        -----
+        Lagged returns are calculated as the closing price shifted by a specified number of periods.
         """
         for i in range(1, lags + 1):
             self.data[f'{LagCol}{i}'] = self.data[CloseCol].shift(i)
@@ -733,6 +813,10 @@ class MarketData:
             The name of the column to store the sentiment score (default is 'mspr').
         api_key : str, optional
             The API key for Finnhub (default is None).
+        
+        Notes
+        -----
+        The sentiment score is fetched from Finnhub API and added to the data.
         """
         if self.finnhub_client is None:
             if api_key is None:
@@ -750,6 +834,10 @@ class MarketData:
         ----------
         features : list
             A list of feature names to add to the data.
+        
+        Notes
+        -----
+        The features are added by calling the corresponding methods from the feature_functions dictionary.
         """
         for feature in features:
             self.feature_functions[feature]()
@@ -762,6 +850,10 @@ class MarketData:
         ----------
         exclude : list, optional
             A list of feature names to exclude (default is an empty list).
+        
+        Notes
+        -----
+        All features are added except those specified in the exclude list.
         """
         features_to_add = [feature for feature in self.feature_functions.keys() if feature not in exclude]
         self.add_features(features_to_add)
@@ -775,6 +867,10 @@ class MarketData:
         strategy : str, optional
             The strategy to use for fixing missing values (default is 'bfill').
             Options are 'bfill', 'ffill', 'mean', 'median', 'most_frequent', 'constant', or 'drop'.
+        
+        Notes
+        -----
+        The missing values are fixed using the specified strategy. If the strategy is 'bfill' or 'ffill', the missing values are filled using backward or forward fill, respectively. If the strategy is 'mean', 'median', 'most_frequent', or 'constant', the missing values are imputed using the specified strategy. If the strategy is 'drop', the rows with missing values are dropped.
         """
         if strategy == 'bfill' or strategy == 'backfill':
             self.data.bfill(inplace=True)
@@ -794,10 +890,17 @@ class MarketData:
         ----------
         features : list
             A list of feature names to plot.
+        save_file : str, optional
+            The name of the file to save the plot (default is "plot.png").
         start_date : str, optional
             The start date for the plot in 'YYYY-MM-DD' format (default is None).
         end_date : str, optional
             The end date for the plot in 'YYYY-MM-DD' format (default is None).
+        
+        Notes
+        -----
+        If start_date and end_date are provided, the data is filtered to that date range before plotting.
+        The plot is saved to the specified file.
         """
         if start_date is not None and end_date is not None:
             data = self.data.loc[start_date:end_date]
@@ -814,10 +917,17 @@ class MarketData:
         ----------
         exclude : list, optional
             A list of feature names to exclude (default is an empty list).
+        save_file : str, optional
+            The name of the file to save the plot (default is "plot.png").
         start_date : str, optional
             The start date for the plot in 'YYYY-MM-DD' format (default is None).
         end_date : str, optional
             The end date for the plot in 'YYYY-MM-DD' format (default is None).
+        
+        Notes
+        -----
+        All features except those specified in the exclude list are plotted.
+        The plot is saved to the specified file.
         """
         features_to_plot = [feature for feature in self.data.columns if feature not in exclude]
         self.plot(features_to_plot, save_file=save_file, start_date=start_date, end_date=end_date)
@@ -828,25 +938,37 @@ class MarketData:
         
         Parameters
         ----------
+        save_file : str, optional
+            The name of the file to save the plot (default is 'plot.png').
         start_date : str, optional
             The start date for the plot in 'YYYY-MM-DD' format (default is None).
         end_date : str, optional
             The end date for the plot in 'YYYY-MM-DD' format (default is None).
+        
+        Notes
+        -----
+        All features except 'Volume', 'OBV', and 'ADL' are plotted.
+        The plot is saved to the specified file.
         """
         self.plot_all_features(exclude=['Volume', 'OBV', 'ADL'], save_file=save_file, start_date=start_date, end_date=end_date)
 
     def plot_volume_features(self, save_file='plot.png', start_date=None, end_date=None):
         """
-        Plots all volume features, excluding specified ones.
+        Plots all volume features.
         
         Parameters
         ----------
-        exclude : list, optional
-            A list of feature names to exclude (default is an empty list).
+        save_file : str, optional
+            The name of the file to save the plot (default is 'plot.png').
         start_date : str, optional
             The start date for the plot in 'YYYY-MM-DD' format (default is None).
         end_date : str, optional
             The end date for the plot in 'YYYY-MM-DD' format (default is None).
+        
+        Notes
+        -----
+        Only 'Volume', 'OBV', and 'ADL' features are plotted.
+        The plot is saved to the specified file.
         """
         self.plot(features=['Volume', 'OBV', 'ADL'], save_file=save_file, start_date=start_date, end_date=end_date)
 
@@ -858,6 +980,10 @@ class MarketData:
         ----------
         file_name : str, optional
             The name of the CSV file to save (default is 'data.csv').
+        
+        Notes
+        -----
+        The data is saved to the specified CSV file with the index included.
         """
         self.data.to_csv(file_name, index=True)
 
@@ -869,6 +995,10 @@ class MarketData:
         ----------
         file_name : str, optional
             The name of the Feather file to save (default is 'data.feather').
+        
+        Notes
+        -----
+        The data is saved to the specified Feather file with the index reset.
         """
         self.data.reset_index().to_feather(file_name)
 
@@ -880,6 +1010,10 @@ class MarketData:
         ----------
         file_name : str, optional
             The name of the CSV file to load (default is 'data.csv').
+        
+        Notes
+        -----
+        The data is loaded from the specified CSV file with the index parsed as dates.
         """
         self.data = pd.read_csv(file_name, index_col=0, parse_dates=True)
 
@@ -891,6 +1025,10 @@ class MarketData:
         ----------
         file_name : str, optional
             The name of the Feather file to load (default is 'data.feather').
+        
+        Notes
+        -----
+        The data is loaded from the specified Feather file and the index is set to 'Date'.
         """
         self.data = pd.read_feather(file_name)
         self.data.set_index('Date', inplace=True)

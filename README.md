@@ -37,6 +37,7 @@
     - Donchian Channels
     - Lagged Returns
     - Sentiment Analysis using Finnhub API
+    - Custom Features
     - And probably more
 - Handle missing values with various strategies
 - Plot features and save plots as images
@@ -122,6 +123,7 @@ md.read_feather('data.feather')
 ## License
 
 There is no official license on this. Feel free to use it however you would like!
+Please don't try to hold me liable for any of this. Use it at your own risk.
 
 ## Contributing
 
@@ -129,4 +131,5 @@ Contributions are welcome! Please open an issue or submit a pull request for any
 
 ## Contact
 
-For any questions or inquiries, please contact the project maintainer.
+For any questions or inquiries, feel free to contact me!
+One way to do this is to connect over LinkedIn and send a message. My profile is in my links.
