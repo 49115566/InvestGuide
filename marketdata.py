@@ -3,6 +3,7 @@ import pandas as pd
 from datafetcher import DataFetcher
 from dataengineer import DataEngineer
 from datafiller import DataFiller
+from datascaler import DataScaler
 from datavisualizer import DataVisualizer
 from datafilemanager import DataFileManager
 
@@ -31,7 +32,7 @@ class MarketData:
     filemanager : DataFileManager
         An instance of DataFileManager for file operations.
     """
-    def __init__(self, ticker: str, start_date: str, end_date: str, fetcher: Optional[DataFetcher] = None, fetch_data: bool = True, engineer: Optional[DataEngineer] = None, filler: Optional[DataFiller] = None, visualizer: Optional[DataVisualizer] = None, filemanager: Optional[DataFileManager] = None, data: Optional[pd.DataFrame] = None):
+    def __init__(self, ticker: str, start_date: str, end_date: str, fetcher: Optional[DataFetcher] = None, fetch_data: bool = True, engineer: Optional[DataEngineer] = None, scaler: Optional[DataScaler] = None, filler: Optional[DataFiller] = None, visualizer: Optional[DataVisualizer] = None, filemanager: Optional[DataFileManager] = None, data: Optional[pd.DataFrame] = None):
         """
         Initializes the MarketData class with the given parameters.
 
@@ -49,6 +50,7 @@ class MarketData:
             self.data = data
         self.engineer = engineer or DataEngineer()
         self.filler = filler or DataFiller()
+        self.scaler = scaler or DataScaler()
         self.visualizer = visualizer or DataVisualizer()
         self.filemanager = filemanager or DataFileManager()
 
@@ -138,6 +140,39 @@ class MarketData:
         This method uses the DataFiller instance to fix missing values in the data.
         """
         self.filler.fix_missing_values(data=self.data, strategy=strategy)
+
+    def scale(self, features: List[str], method: str = 'standard') -> None:
+        """
+        Scales the specified features in the data using the specified method.
+
+        Parameters
+        ----------
+        features : list
+            A list of feature names to scale.
+        method : str, optional
+            The scaling method to use (default is 'standard').
+            Options are 'standard', 'minmax', 'maxabs', 'robust', or 'quantile'.
+
+        Notes
+        -----
+        This method uses the Scaler instance to scale the specified features in the data.
+        """
+        self.scaler.scale(data=self.data, features=features, method=method)
+
+    def unscale(self, features: List[str]) -> None:
+        """
+        Unscales the specified features in the data.
+
+        Parameters
+        ----------
+        features : list
+            A list of feature names to unscale.
+
+        Notes
+        -----
+        This method uses the Scaler instance to unscale the specified features in the data.
+        """
+        self.scaler.unscale(data=self.data, features=features)
 
     def plot(self, features: List[str] = [], save_file: str = "plot.png", start_date: Optional[str] = None, end_date: Optional[str] = None) -> None:
         """

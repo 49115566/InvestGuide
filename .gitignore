@@ -1,3 +1,4 @@
 AAPL.csv
 AAPL.feather
 __pycache__/
+model.keras
